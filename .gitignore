@@ -1,2 +1,5 @@
 *.o
 *.tga
+CMakeLists.txt
+.DS_Store
+.idea/
