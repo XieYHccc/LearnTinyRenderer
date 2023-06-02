@@ -9,12 +9,12 @@
 #include <vector>
 #include "geometry.h"
 
-Vec3f barycentric(Vec2i* vertex, Vec2i P){
+Vec3f barycentric(Vec2f* vertex, Vec2f P){
     // calculate cross product
     Vec3f uv1=Vec3f(vertex[1].x-vertex[0].x,vertex[2].x-vertex[0].x,vertex[0].x-P.x)^
             Vec3f(vertex[1].y-vertex[0].y,vertex[2].y-vertex[0].y,vertex[0].y-P.y);
 
-    if(abs(uv1.z)<1) return Vec3f(-1,1,1);
+    if(abs(uv1.z)<0.00001) return Vec3f(-1,1,1);
     return Vec3f (1.f-(uv1.x+uv1.y)/uv1.z,uv1.x/uv1.z,uv1.y/uv1.z);
 }
 
@@ -81,26 +81,36 @@ void triangle_line_sweeping(Vec2f p0, Vec2f p1, Vec2f p2, TGAImage &image, TGACo
         x_1to2 +=dx_1to2;
     }
 }
-void triangle(Vec2i* vertex, TGAImage &image, TGAColor color)
+void triangle(Vec3f* vertex, float* z_buffer, TGAImage &image, TGAColor color)
 {
     int width = image.get_width();
     int height = image.get_height();
 
     // find bounding box of the triangle
-    int xmin,xmax,ymin,ymax;
-    xmin = std::max(0,std::min(vertex[0].x,std::min(vertex[1].x,vertex[2].x)));
-    xmax = std::min(width-1,std::max(vertex[0].x,std::max(vertex[1].x,vertex[2].x)));
-    ymin = std::max(0,std::min(vertex[0].y,std::min(vertex[1].y,vertex[2].y)));
-    ymax = std::min(height-1,std::max(vertex[0].y,std::max(vertex[1].y,vertex[2].y)));
-    if(xmin>width-1||xmax<0||ymin>height-1||ymax<0)
+    float xmin,xmax,ymin,ymax;
+    xmin = std::max(0.f,std::min(vertex[0].x,std::min(vertex[1].x,vertex[2].x)));
+    xmax = std::min(width-1.f,std::max(vertex[0].x,std::max(vertex[1].x,vertex[2].x)));
+    ymin = std::max(0.f,std::min(vertex[0].y,std::min(vertex[1].y,vertex[2].y)));
+    ymax = std::min(height-1.f,std::max(vertex[0].y,std::max(vertex[1].y,vertex[2].y)));
+    if(xmin>width-1.f||xmax<0.f||ymin>height-1.f||ymax<0.f)
         return;
-
-    for(int x=xmin;x<=xmax;x++){
-        for(int y =ymin;y<=ymax;y++){
-            Vec3f bc_screen = barycentric(vertex,Vec2i(x,y));
-            if (bc_screen.x<0||bc_screen.y<0||bc_screen.z<0)
+    int x_min = std::floor(xmin);
+    int x_max = int(xmax)==xmax? int(xmax)-1:int(xmax);
+    int y_min = std::floor(ymin);
+    int y_max = int(ymax)==ymax? int(ymax)-1:int(ymax);
+    for(int x=x_min;x<=x_max;x++){
+        for(int y =y_min;y<=y_max;y++){
+            int id=x+y*width;
+            Vec2f p2d[]={Vec2f(vertex[0].x,vertex[0].y),Vec2f(vertex[1].x,vertex[1].y),
+                         Vec2f(vertex[2].x,vertex[2].y)};
+            Vec3f bc_coords = barycentric(p2d,Vec2f(x,y));
+            if (bc_coords.x<0||bc_coords.y<0||bc_coords.z<0)
                 continue;
-            image.set(x,y,color);
+            float z_interpolated = vertex[0].z*bc_coords.x+vertex[1].z*bc_coords.y+vertex[2].z*bc_coords.z;
+            if(z_interpolated>z_buffer[id]){
+                image.set(x,y,color);
+                z_buffer[id]=z_interpolated;
+            }
         }
     }
 
