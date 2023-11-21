@@ -1,6 +1,6 @@
-*.o
-*.tga
-CMakeLists.txt
+.vscode
 .DS_Store
-.idea/
-main
+.idea
+.cache
+/build
+
