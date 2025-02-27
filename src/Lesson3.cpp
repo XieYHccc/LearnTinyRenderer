@@ -2,22 +2,22 @@
 #include <cmath>
 #include "tgaimage.h"
 #include "geometry.h"
-#include "model.h"
+#include "model_lesson3.h"
 
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red = TGAColor(255, 0, 0, 255);
 const TGAColor green = TGAColor(0, 255, 0, 255);
 const TGAColor blue = TGAColor(0, 0, 255, 255);
-Model* model = NULL;
+Model* model = nullptr;
 
 const int width = 800;
 const int height = 800;
 Vec3f light_dir(0, 0, -1);
 
-void line(Vec2i p0, Vec2i p1, TGAImage& image, const TGAColor& color) 
+void line(Vec2i p0, Vec2i p1, TGAImage& image, const TGAColor& color)
 {
     bool steep = false;
-    if (std::abs(p0.x - p1.x) < std::abs(p0.y - p1.y)) 
+    if (std::abs(p0.x - p1.x) < std::abs(p0.y - p1.y))
     {
         std::swap(p0.x, p0.y);
         std::swap(p1.x, p1.y);
@@ -31,7 +31,7 @@ void line(Vec2i p0, Vec2i p1, TGAImage& image, const TGAColor& color)
     int derror2 = std::abs(dy) * 2;
     int error2 = 0;
     int y = p0.y;
-    for (int x = p0.x; x <= p1.x; x++) 
+    for (int x = p0.x; x <= p1.x; x++)
     {
         if (steep)
             image.set(y, x, color);
@@ -39,7 +39,7 @@ void line(Vec2i p0, Vec2i p1, TGAImage& image, const TGAColor& color)
             image.set(x, y, color);
         error2 += derror2;
 
-        if (error2 > dx) 
+        if (error2 > dx)
         {
             y += (p1.y > p0.y ? 1 : -1);
             error2 -= dx * 2;
@@ -92,8 +92,6 @@ TGAColor linear_sample_texture(Vec2f uv, TGAImage& texture) {
     return finalColor;
 }
 
-
-
 void triangle(Vec3f* pts, Vec2f* uvs, float* zbuffer, TGAImage& image, float intensity, TGAImage& diffuse) {
     Vec2f bboxmin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
     Vec2f bboxmax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
@@ -129,23 +127,19 @@ void triangle(Vec3f* pts, Vec2f* uvs, float* zbuffer, TGAImage& image, float int
 }
 
 Vec3f world2screen(Vec3f v) {
-    return Vec3f(int((v.x + 1.) * width / 2. + .5), int((v.y + 1.) * height / 2. + .5), v.z);
+    return Vec3f(int((v.x + 1.) * width / 2. ), int((v.y + 1.) * height / 2.), v.z);
 }
 
 int main(int argc, char** argv) {
-    if (2 == argc) {
-        model = new Model(argv[1]);
-    }
-    else {
-        model = new Model("../../obj/african_head/african_head.obj");
-    }
-
+    // load model and diffuse texture
+    model = new Model("../../obj/african_head/african_head.obj");
     TGAImage head_diffuse;
     head_diffuse.read_tga_file("../../obj/african_head/african_head_diffuse.tga");
-    // head_diffuse.flip_vertically();
+
+    // create and init zbuffer. current depth value haven't been transformed with perspective matrix.
     float* zbuffer = new float[width * height];
     for (int i = width * height - 1; i >= 0; --i)
-        zbuffer[i] = -std::numeric_limits<float>::max();
+        zbuffer[i] = -1;
 
     TGAImage image(width, height, TGAImage::RGB);
     for (int i = 0; i < model->nfaces(); i++) {
