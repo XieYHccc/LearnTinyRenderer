@@ -60,7 +60,7 @@ mat4 lookat(Vec3f eye, Vec3f center, Vec3f up) {
     return rotate * translate;
 }
 
-mat4 perspective(float eye_fov, float aspect_ratio, float zNear, float zFar) {
+mat4 my_perspective(float eye_fov, float aspect_ratio, float zNear, float zFar) {
     const auto eye_fov_rad = eye_fov / 180.0f * PI;
     const auto t = zNear * tan(eye_fov_rad / 2.0f); // top plane
     const auto r = t * aspect_ratio;    // right plane
@@ -176,11 +176,20 @@ void triangle(Vec3f* pts, float ity0, float ity1, float ity2, TGAImage& image, f
     }
 }
 
-float NDCDepth2LinearDepth(float z_ndc, float zNear, float zFar) {
+float my_NDCDepth2LinearDepth(float z_ndc, float zNear, float zFar) {
     float n = -zNear;
     float f = -zFar;
 	float linear_depth = -2 * n * f / (z_ndc * (n - f) - f - n);
     float normalized_depth = (n - linear_depth) / (n - f);
+
+    return normalized_depth;
+}
+
+float NDCDepth2LinearDepth(float z_ndc, float zNear, float zFar) {
+    float n = zNear;
+    float f = zFar;
+    float linear_depth = -2 * n * f / (z_ndc * (f - n) - f - n);
+    float normalized_depth = (linear_depth - n) / (f - n);
 
     return normalized_depth;
 }
@@ -200,7 +209,7 @@ int main(int argc, char** argv) {
 
     { // draw the model
         mat4 ModelView = lookat(eye, center, Vec3f(0, 1, 0));
-        mat4 proj = perspective(45, width / height, 0.1, 10);
+        mat4 proj = my_perspective(45, width / height, 0.1, 10);
         mat4 vp = viewport(0, 0, width, height);
 
         std::cerr << ModelView << std::endl;
@@ -218,7 +227,7 @@ int main(int argc, char** argv) {
                 mat<4, 1, float> tmp = vec2mat(v);
                 screen_coords[j] = mat2vec(vp * proj * ModelView * tmp);
                 world_coords[j] = v;
-                intensity[j] = std::max(0.f, model->norm(i, j) * light_dir);
+                intensity[j] = std::max(0.f, model->normal(i, j) * light_dir);
             }
             triangle(screen_coords, intensity[0], intensity[1], intensity[2], image, zbuffer);
             // triangle(screen_coords[0], screen_coords[1], screen_coords[2], intensity[0], intensity[1], intensity[2], image, zbuffer);
@@ -231,7 +240,7 @@ int main(int argc, char** argv) {
         TGAImage zbimage(width, height, TGAImage::GRAYSCALE);
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
-                float depth = NDCDepth2LinearDepth(zbuffer[i + j * width], 0.1f, 10.f);
+                float depth = my_NDCDepth2LinearDepth(zbuffer[i + j * width], 0.1f, 10.f);
                 // std::cout << zbuffer[i + j * width] << ", " << depth << std::endl;
                 zbimage.set(i, j, TGAColor(depth * 255));
             }
