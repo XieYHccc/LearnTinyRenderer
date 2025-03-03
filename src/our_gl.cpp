@@ -80,7 +80,6 @@ void triangle(Vec4f* pts, IShader& shader, TGAImage& image, TGAImage& zbuffer)
             bool discard = shader.fragment(c, color);
             if (!discard) {
                 zbuffer.set(P.x, P.y, TGAColor(frag_depth));
-                float z_z = zbuffer.get(P.x, P.y).val;
                 image.set(P.x, P.y, color);
             }
         }

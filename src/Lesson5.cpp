@@ -13,9 +13,10 @@ const float PI = 3.14159265358979323846;
 
 Model* model = NULL;
 float* zbuffer = NULL;
-Vec3f light_dir = Vec3f(1, -1, 1).normalize();
-Vec3f eye(0, 0, 5);
+Vec3f light_dir = Vec3f(1, 1, 1).normalize();
+Vec3f eye(0, 0, 3);
 Vec3f center(0, 0, 0);
+Vec3f up(0, 1, 0);
 
 mat<4, 1, float> vec2mat(Vec3f v) {
     mat<4, 1, float> m;
@@ -87,20 +88,20 @@ mat4 my_perspective(float eye_fov, float aspect_ratio, float zNear, float zFar) 
     return ortho * proj;
 }
 
-//mat4 perspective(float eye_fov, float aspect_ratio, float zNear, float zFar) {
-//    eye_fov = eye_fov * PI / 180;
-//    float fax = 1.0f / (float)tan(eye_fov * 0.5f);
-//
-//    mat4 m = mat4::identity();
-//    m[0][0] = fax / aspect_ratio;
-//    m[1][1] = fax;
-//    m[2][2] = -(zFar + zNear) / (zFar - zNear);
-//    m[2][3] = -(2 * zFar * zNear) / (zFar - zNear);
-//    m[3][2] = -1;
-//    m[3][3] = 0;
-//
-//    return m;
-//}
+mat4 perspective(float eye_fov, float aspect_ratio, float zNear, float zFar) {
+    eye_fov = eye_fov * PI / 180;
+    float fax = 1.0f / (float)tan(eye_fov * 0.5f);
+
+    mat4 m = mat4::identity();
+    m[0][0] = fax / aspect_ratio;
+    m[1][1] = fax;
+    m[2][2] = -(zFar + zNear) / (zFar - zNear);
+    m[2][3] = -(2 * zFar * zNear) / (zFar - zNear);
+    m[3][2] = -1;
+    m[3][3] = 0;
+
+    return m;
+}
 
 void triangle(Vec3f t0, Vec3f t1, Vec3f t2, float ity0, float ity1, float ity2, TGAImage& image, float* zbuffer) {
     if (t0.y == t1.y && t0.y == t2.y) return; // i dont care about degenerate triangles
@@ -134,9 +135,9 @@ void triangle(Vec3f t0, Vec3f t1, Vec3f t2, float ity0, float ity1, float ity2, 
     }
 }
 
-Vec3f barycentric(Vec3f A, Vec3f B, Vec3f C, Vec3f P) {
+Vec3f barycentric(Vec2f A, Vec2f B, Vec2f C, Vec2f P) {
     Vec3f s[2];
-    for (int i = 1; i >= 0; i--) {
+    for (int i = 2; i--; ) {
         s[i][0] = C[i] - A[i];
         s[i][1] = B[i] - A[i];
         s[i][2] = A[i] - P[i];
@@ -157,19 +158,19 @@ void triangle(Vec3f* pts, float ity0, float ity1, float ity2, TGAImage& image, f
             bboxmax[j] = std::min(clamp[j], std::max(bboxmax[j], pts[i][j]));
         }
     }
-    Vec3f P;        
-    for (P.x = (int)bboxmin.x; P.x <= bboxmax.x; P.x++) {
-        for (P.y = (int)bboxmin.y; P.y <= bboxmax.y; P.y++) {
-            Vec3f bc_screen = barycentric(pts[0], pts[1], pts[2], P);
+    Vec2i P;        
+    for (P.x = bboxmin.x; P.x <= bboxmax.x; P.x++) {
+        for (P.y = bboxmin.y; P.y <= bboxmax.y; P.y++) {
+            Vec3f bc_screen = barycentric(proj<2>(pts[0]), proj<2>(pts[1]), proj<2>(pts[2]), P);
             if (bc_screen.x < 0 || bc_screen.y < 0 || bc_screen.z < 0) continue;
 
-            P.z = 0;
+            float frag_depth = 0;
             float ityP = ity0 * bc_screen.x + ity1 * bc_screen.y + ity2 * bc_screen.z;
             for (int i = 0; i < 3; i++)
-                P.z += pts[i][2] * bc_screen[i];
+                frag_depth += pts[i][2] * bc_screen[i];
 
-            if (zbuffer[int(P.x + P.y * width)] < P.z) {   // !!! x and y of P must be integer to get the correct index of zbuffer
-                zbuffer[int(P.x + P.y * width)] = P.z;
+            if (zbuffer[P.x + P.y * width] > frag_depth) {   // !!! x and y of P must be integer to get the correct index of zbuffer
+                zbuffer[P.x + P.y * width] = frag_depth;
                 image.set(P.x, P.y, TGAColor(255, 255, 255, 255) * ityP);
             }
         }
@@ -204,12 +205,12 @@ int main(int argc, char** argv) {
 
     zbuffer = new float[width * height];
     for (int i = 0; i < width * height; i++) {
-        zbuffer[i] = -1.f;
+        zbuffer[i] = 1.f;
     }
 
     { // draw the model
-        mat4 ModelView = lookat(eye, center, Vec3f(0, 1, 0));
-        mat4 proj = my_perspective(45, width / height, 0.1, 10);
+        mat4 ModelView = lookat(eye, center, up);
+        mat4 proj = perspective(45, width / height, 0.1, 10);
         mat4 vp = viewport(0, 0, width, height);
 
         std::cerr << ModelView << std::endl;
@@ -224,8 +225,8 @@ int main(int argc, char** argv) {
             float intensity[3];
             for (int j = 0; j < 3; j++) {
                 Vec3f v = model->vert(face[j]);
-                mat<4, 1, float> tmp = vec2mat(v);
-                screen_coords[j] = mat2vec(vp * proj * ModelView * tmp);
+                Vec4f gl_Pos = vp * proj * ModelView * embed<4>(v, 1.f);
+                screen_coords[j] = Vec3f(gl_Pos[0] / gl_Pos[3], gl_Pos[1] / gl_Pos[3], gl_Pos[2] / gl_Pos[3]);
                 world_coords[j] = v;
                 intensity[j] = std::max(0.f, model->normal(i, j) * light_dir);
             }
@@ -233,16 +234,16 @@ int main(int argc, char** argv) {
             // triangle(screen_coords[0], screen_coords[1], screen_coords[2], intensity[0], intensity[1], intensity[2], image, zbuffer);
         }
         image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
-        image.write_tga_file("output1.tga");
+        image.write_tga_file("output.tga");
     }
 
     { // dump z-buffer (debugging purposes only)
         TGAImage zbimage(width, height, TGAImage::GRAYSCALE);
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
-                float depth = my_NDCDepth2LinearDepth(zbuffer[i + j * width], 0.1f, 10.f);
+                float depth = NDCDepth2LinearDepth(zbuffer[i + j * width], 0.1f, 10.f);
                 // std::cout << zbuffer[i + j * width] << ", " << depth << std::endl;
-                zbimage.set(i, j, TGAColor(depth * 255));
+                zbimage.set(i, j, TGAColor(unsigned char(depth * 255)));
             }
         }
         zbimage.flip_vertically(); // i want to have the origin at the left bottom corner of the image
