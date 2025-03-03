@@ -7,6 +7,7 @@
 mat4 viewport(int x, int y, int w, int h);
 mat4 perspective(float eye_fov, float aspect_ratio, float zNear, float zFar);
 mat4 lookat(Vec3f eye, Vec3f center, Vec3f up);
+mat4 ortho(float left, float right, float bottom, float top, float zNear, float zFar);
 
 struct IShader {
     virtual ~IShader() = default;
@@ -16,4 +17,5 @@ struct IShader {
 
 void triangle(Vec4f* pts, IShader& shader, TGAImage& image, TGAImage& zbuffer);
 
+void triangle(Vec4f* pts, IShader& shader, TGAImage& image, float* zbuffer);
 #endif //__OUR_GL_H__

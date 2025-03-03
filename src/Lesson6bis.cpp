@@ -80,8 +80,7 @@ struct GouraudShader : public IShader {
         // Vec3f n = proj<3>(uniform_modelview_invtran * embed<4>(model->normal(uv), 0.f)).normalize();
         Vec3f l = proj<3>(uniform_view * embed<4>(light_dir, 0.f)).normalize(); 
         Vec3f r = reflect(n, l).normalize();
-        Vec3f viewPos = proj<3>(uniform_view * embed<4>(eye, 1.f));
-        Vec3f viewDir = (viewPos - fragPos).normalize();
+        Vec3f viewDir = (Vec3f(0.f, 0.f, 0.f) - fragPos).normalize();
         TGAColor color = model->diffuse(uv);
         // ambient
         TGAColor ambient = color * 0.1;
@@ -89,6 +88,7 @@ struct GouraudShader : public IShader {
         float diff = std::max(0.f, n * l );
         TGAColor diffuse = color * diff;
         // specular
+        // float shininess = std::max(4.f, model->specular(uv) / 255.0f * 64.0f);
         float spec = std::pow(std::max(0.f, viewDir * r), model->specular(uv));
         TGAColor specular = TGAColor(255, 255, 255) * spec * 0.4f;
 

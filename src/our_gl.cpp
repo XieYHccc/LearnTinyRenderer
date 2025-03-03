@@ -28,6 +28,18 @@ mat4 lookat(Vec3f eye, Vec3f center, Vec3f up) {
     return rotate * translate;
 }
 
+mat4 ortho(float left, float right, float bottom, float top, float zNear, float zFar)
+{
+    mat4 m = mat4::identity();
+    m[0][0] = 2.f / (right - left);
+    m[1][1] = 2.f / (top - bottom);
+    m[2][2] = -2.f / (zFar - zNear);
+    m[0][3] = -(right + left) / (right - left);
+    m[1][3] = -(top + bottom) / (top - bottom);
+    m[2][3] = -(zFar + zNear) / (zFar - zNear);
+    return m;
+}
+
 mat4 perspective(float eye_fov, float aspect_ratio, float zNear, float zFar) {
     eye_fov = eye_fov * PI / 180;
     float fax = 1.0f / (float)tan(eye_fov * 0.5f);
@@ -80,6 +92,38 @@ void triangle(Vec4f* pts, IShader& shader, TGAImage& image, TGAImage& zbuffer)
             bool discard = shader.fragment(c, color);
             if (!discard) {
                 zbuffer.set(P.x, P.y, TGAColor(frag_depth));
+                float a = zbuffer.get(P.x, P.y).val;
+                image.set(P.x, P.y, color);
+            }
+        }
+    }
+}
+
+void triangle(Vec4f* pts, IShader& shader, TGAImage& image, float* zbuffer)
+{
+    Vec2f bboxmin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+    Vec2f bboxmax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+    Vec2f clamp(image.get_width() - 1, image.get_height() - 1);
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 2; j++) {
+            bboxmin[j] = std::max(0.f, std::min(bboxmin[j], pts[i][j] / pts[i][3]));
+            bboxmax[j] = std::min(clamp[j], std::max(bboxmax[j], pts[i][j] / pts[i][3]));
+        }
+    }
+
+    Vec2i P;
+    TGAColor color;
+    for (P.x = bboxmin.x; P.x <= bboxmax.x; P.x++) {
+        for (P.y = bboxmin.y; P.y <= bboxmax.y; P.y++) {
+            Vec3f c = barycentric(proj<2>(pts[0] / pts[0][3]), proj<2>(pts[1] / pts[1][3]), proj<2>(pts[2] / pts[2][3]), proj<2>(P));
+            float z = pts[0][2] * c.x + pts[1][2] * c.y + pts[2][2] * c.z;
+            float w = pts[0][3] * c.x + pts[1][3] * c.y + pts[2][3] * c.z;
+            float frag_depth = std::max(0.f, std::min(1.f, (0.5f * z / w + .5f)));
+            if (c.x < 0 || c.y < 0 || c.z < 0 || frag_depth > zbuffer[int(P.x +  P.y * image.get_width())]) continue;
+            bool discard = shader.fragment(c, color);
+            if (!discard) {
+                zbuffer[P.x + P.y * image.get_width()] = frag_depth;
+                float a = zbuffer[P.x + P.y * image.get_width()];
                 image.set(P.x, P.y, color);
             }
         }
