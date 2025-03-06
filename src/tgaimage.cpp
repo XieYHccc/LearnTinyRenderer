@@ -269,7 +269,6 @@ bool TGAImage::set(int x, int y, const TGAColor& c) {
         return false;
     }
     memcpy(data + (x + y * width) * bytespp, c.bgra, bytespp);
-
     return true;
 }
 

@@ -5,7 +5,8 @@ add_executable(Lesson5 Lesson5.cpp tgaimage.cpp tgaimage.h model.h model.cpp geo
 add_executable(Lesson6 Lesson6.cpp tgaimage.cpp tgaimage.h model.h model.cpp geometry.h geometry.cpp our_gl.h our_gl.cpp)
 add_executable(Lesson6bis Lesson6bis.cpp tgaimage.cpp tgaimage.h model.h model.cpp geometry.h geometry.cpp our_gl.h our_gl.cpp)
 add_executable(Lesson7 Lesson7.cpp tgaimage.cpp tgaimage.h model.h model.cpp geometry.h geometry.cpp our_gl.h our_gl.cpp)
+add_executable(InterpolationCorrect InterpolationCorrect.cpp tgaimage.cpp tgaimage.h model.h model.cpp geometry.h geometry.cpp our_gl.h our_gl.cpp)
 
-set(TARGET_HDRS model.h tgaimage.h geometry.h)
-set(TARGET_SRCS tgaimage.cpp main.cpp model.cpp)
+# set(TARGET_HDRS model.h tgaimage.h geometry.h)
+# set(TARGET_SRCS tgaimage.cpp main.cpp model.cpp)
 # add_executable(tinyrenderer ${TARGET_HDRS} ${TARGET_SRCS})

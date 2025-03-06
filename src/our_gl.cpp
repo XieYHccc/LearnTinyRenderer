@@ -85,11 +85,13 @@ void triangle(Vec4f* pts, IShader& shader, TGAImage& image, TGAImage& zbuffer)
     for (P.x = bboxmin.x; P.x <= bboxmax.x; P.x++) {
         for (P.y = bboxmin.y; P.y <= bboxmax.y; P.y++) {
             Vec3f c = barycentric(proj<2>(pts[0] / pts[0][3]), proj<2>(pts[1] / pts[1][3]), proj<2>(pts[2] / pts[2][3]), proj<2>(P));
-            float z = pts[0][2] * c.x + pts[1][2] * c.y + pts[2][2] * c.z;
-            float w = pts[0][3] * c.x + pts[1][3] * c.y + pts[2][3] * c.z;
+            Vec3f c_corrected = Vec3f(c.x / pts[0][3], c.y / pts[1][3], c.z / pts[2][3]);
+            c_corrected = c_corrected / (c_corrected.x + c_corrected.y + c_corrected.z);
+            float z = pts[0][2] * c_corrected.x + pts[1][2] * c_corrected.y + pts[2][2] * c_corrected.z;
+            float w = pts[0][3] * c_corrected.x + pts[1][3] * c_corrected.y + pts[2][3] * c_corrected.z;
             float frag_depth = std::max(0.f, std::min(1.f, (0.5f * z / w + .5f)));
             if (c.x < 0 || c.y < 0 || c.z < 0 || frag_depth > zbuffer.get(P.x, P.y).val) continue;
-            bool discard = shader.fragment(c, color);
+            bool discard = shader.fragment(c_corrected, color);
             if (!discard) {
                 zbuffer.set(P.x, P.y, TGAColor(frag_depth));
                 float a = zbuffer.get(P.x, P.y).val;
@@ -116,11 +118,13 @@ void triangle(Vec4f* pts, IShader& shader, TGAImage& image, float* zbuffer)
     for (P.x = bboxmin.x; P.x <= bboxmax.x; P.x++) {
         for (P.y = bboxmin.y; P.y <= bboxmax.y; P.y++) {
             Vec3f c = barycentric(proj<2>(pts[0] / pts[0][3]), proj<2>(pts[1] / pts[1][3]), proj<2>(pts[2] / pts[2][3]), proj<2>(P));
+            Vec3f c_corrected = Vec3f(c.x / pts[0][3], c.y / pts[1][3], c.z / pts[2][3]);
+            c_corrected = c_corrected / (c_corrected.x + c_corrected.y + c_corrected.z);
             float z = pts[0][2] * c.x + pts[1][2] * c.y + pts[2][2] * c.z;
             float w = pts[0][3] * c.x + pts[1][3] * c.y + pts[2][3] * c.z;
             float frag_depth = std::max(0.f, std::min(1.f, (0.5f * z / w + .5f)));
             if (c.x < 0 || c.y < 0 || c.z < 0 || frag_depth > zbuffer[int(P.x +  P.y * image.get_width())]) continue;
-            bool discard = shader.fragment(c, color);
+            bool discard = shader.fragment(c_corrected, color);
             if (!discard) {
                 zbuffer[P.x + P.y * image.get_width()] = frag_depth;
                 float a = zbuffer[P.x + P.y * image.get_width()];

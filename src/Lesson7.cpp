@@ -200,12 +200,12 @@ int main(int argc, char** argv) {
         shader.inputAttachment_shadowMap = &shadow_zbuffer;
 
         for (int i = 0; i < model->nfaces(); i++) {
-        Vec4f screen_coords[3];
-        for (int j = 0; j < 3; j++) {
-            screen_coords[j] = shader.vertex(i, j);
+            Vec4f screen_coords[3];
+            for (int j = 0; j < 3; j++) {
+                screen_coords[j] = shader.vertex(i, j);
+            }
+            triangle(screen_coords, shader, frame, zbuffer);
         }
-        triangle(screen_coords, shader, frame, zbuffer);
-}
         frame.flip_vertically(); // to place the origin in the bottom left corner of the image
         frame.write_tga_file("framebuffer.tga");
     }
